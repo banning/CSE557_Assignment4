@@ -1,0 +1,12 @@
+#PBS -l nodes=1:mpi:ppn=1
+#PBS -l mem=1Gb
+#PBS -l walltime=00:05:00
+#PBS -o ./stdout_SMV.txt
+#PBS -e ./stderr_SMV.txt
+#PBS -V
+#PBS -q cse557
+
+cd /gpfs/home/mab615/CSE557/assign4
+module load openmpi/intel/1.4.2
+
+mpirun ./openMP_SMV
