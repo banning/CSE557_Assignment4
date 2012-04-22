@@ -4,8 +4,15 @@
 #include <vector>
 #include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 using namespace std;
+struct matrix
+{
+   vector<int> row;
+   vector<int> col;
+   vector<double> val;
+   int n;
+   int num;
+};
 int main(int argc, const char* argv[])
 {
    if (argc <2)
@@ -14,8 +21,7 @@ int main(int argc, const char* argv[])
       return 0;
    }
    string line;
-   int n;
-   int num;
+   matrix A;
    int last=0;
    ifstream myFile(argv[1]);
    if (myFile.is_open())
@@ -24,51 +30,63 @@ int main(int argc, const char* argv[])
       getline(myFile, line);
       getline(myFile, line);
       int space = line.find_first_of(" ");
-      n = atoi(line.substr(0, space).c_str());
-      num=atoi(line.substr(space+1, line.length()-space).c_str());
-      int row[n+1];
-      int col[num];
-      double val[num];
-      for (int i = 0; i < n+1; i++)
+      A.n = atoi(line.substr(0, space).c_str());
+      A.num=atoi(line.substr(space+1, line.length()-space).c_str());
+      while (myFile.good())
       {
          getline(myFile, line);
-         row[i] = atoi(line.c_str());
-      }
-      for (int i = 0; i < num; i++)
-      {
-         getline(myFile, line);
-         col[i]=atoi(line.c_str());
-      }
-      for (int i = 0; i < num; i++)
-      {
-         getline(myFile, line);
-         val[i]=atof(line.c_str());
-      }
-      int x[n];
-      double y[n];
-      for (int i = 0; i < num; i++)
-      {
-         x[i]=1;
-      }
-      double sum;
-      time_t start, end;
-  
-      time(&start);
-      //#pragma omp parallel for private(sum) schedule(static) 
-      for (int i = 0; i < n; i++)
-      {
-         sum = 0.0;
-         for (int j = row[i]-1; j < row[i+1]-1; j++)
+         space = atoi(line.c_str());
+         if (space < last && last != 0)
          {
-            double Xi = x[col[j]];
-            double Ai = val[j];
-            sum = sum + Ai*Xi;
+            A.col.push_back(space);
+            break;
          }
-         y[i]=sum;
+         last=space;
+         A.row.push_back(space);
       }
-      time(&end);
-      double diff = difftime(start, end);
-      cout<<"The time to run was"<<diff<<endl;
+      for (int i = 0; i < A.num-1; i++)
+      {
+         getline(myFile, line);
+         space=atoi(line.c_str());
+         A.col.push_back(space);
+      }
+      for (int i = 0; i < A.num; i++)
+      {
+         getline(myFile, line);
+         double val=atof(line.c_str());
+         A.val.push_back(val);
+      }
+   }
+   cout<<"Values"<<endl;
+   for (int i = 0; i < A.num; i++)
+   {
+      cout<<A.val.at(i)<<'\t';
+   }
+   cout<<endl;
+   
+   int x[A.n];
+   double y[A.n];
+   for (int i = 0;  i < A.num; i++)
+   {
+      x[i]=1;
+   }
+   double sum;
+   cout<<"Running sum now"<<endl;
+   for (int i = 0; i < A.n; i++)
+   {
+      sum = 0.0;  
+      cout<<"J goes from "<<A.row.at(i)<< " to " <<A.row.at(i+1)-1<<endl;
+      for (int j = A.row.at(i)-1; j <  A.row.at(i+1)-1; j++)
+      {
+         double Xi = x[A.col.at(j)];
+         double Ai = A.val.at(j);
+         sum = sum + Ai*Xi;
+      }
+      y[i]=sum;
+   }
+   for (int i = 0; i < A.n; i++)
+   {
+      cout <<"y["<<i<<"] = "<<y[i]<<endl;
    }
    return 0;
 } 
