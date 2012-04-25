@@ -13,16 +13,6 @@
 
 using namespace std;
 
-// Define matrix struct
-struct matrix
-{
-	vector<int> row;
-	vector<int> col;
-	vector<double> val;
-	int n;
-	int num;
-};
-
 int main(int argc, const char* argv[])
 {
 	// Verify arguements
@@ -32,109 +22,94 @@ int main(int argc, const char* argv[])
 		return 0;
 	}
 
-	// Allocate variables
-	string line;
-	matrix A;
-	int last=0;
-	ifstream myFile(argv[1], ifstream::in);
+// Begin code from mwm126 to load mtx file directly
+	FILE *input = fopen(argv[1], "rb");
 
-	// Read from input file
-	if (myFile.is_open())
-	{
-		//gets rid of documentation line
-		getline(myFile, line);
-		
-		getline(myFile, line);
-		int space = line.find_first_of(" ");
+	char* line = NULL;
+	size_t line_sz;
 
-		A.n = atoi(line.substr(0, space).c_str());
-		A.num = atoi(line.substr(space+1, line.length()-space).c_str());
-cout<<A.n <<" " <<A.num <<endl;
-		// while (myFile.good())
-		// {
-		// 	getline(myFile, line);
-		// 	space = atoi(line.c_str());
-
-		// 	if (space < last && last != 0)
-		// 	{
-		// 		A.col.push_back(space);
-		// 		break;
-		// 	}
-
-		// 	last=space;
-		// 	A.row.push_back(space);
-		// }
-
-		for (int i = 0; i < A.n+1; i++)
-		{
-			getline(myFile, line);
-			space=atoi(line.c_str());
-			A.row.push_back(space);
+	do {
+		if (-1==getline(&line,&line_sz,input)) {
+		  perror("Error reading input\n");
+		  exit(0);
 		}
-		for (int i = 0; i < A.num; i++)
-		{
-			getline(myFile, line);
-			space=atoi(line.c_str());
-			A.col.push_back(space);
-		}
+	} while (line[0]=='%');
 
-		for (int i = 0; i < A.num; i++)
-		{
-			getline(myFile, line);
-			double val=atof(line.c_str());
-			A.val.push_back(val);
+	int rows = 0;
+	int cols = 0;
+	int vals = 0;
+	sscanf(line, "%d %d %d", &rows, &cols, &vals); // read header line
+
+	int x[cols];
+	double y[rows];
+
+	int A_row[rows];
+	int A_col[vals];
+	double A_val[vals];
+
+	for (int i = 0; i < rows; i++)
+		A_row[i] = 0;
+
+	for (int i = 0; i < vals; i++)
+		A_col[i] = 0;
+
+	for (int i = 0; i < vals; i++)
+		A_val[i] = 0;
+
+	int row,col;
+	int val=1;  // use 1 as an arbitrary value
+	int limit=0;
+
+	int row_idx = -1;
+	int col_idx = 0;
+	double* val_p = A_val;
+
+	while (2==fscanf(input, "%d %d", &col, &row)) {
+	// while (3==fscanf(input, "%d %d %g", &col, &row, &val)) { // recompile for shipsec
+		col--; // index from zero, not one 
+		row--; // index from zero, not one
+
+		if (row_idx < row) {
+		  row_idx++;
+		  A_row[row_idx] = col_idx;
+		} else if (row < row_idx) {
+		  printf("Error with input, rows not monotonically increasing\n");
+		  exit(-1);
+		} else if (col < A_col[col_idx]) {
+		  printf("Error with input, columns not monotonically increasing within a row\n");
+		  exit(-1);
 		}
+		A_col[col_idx] = col;
+		col_idx++;
+		val_p++;
+		(*val_p) = val;
+
 	}
-
-	// cout<<"Values"<<endl;
-	// for (int i = 0; i < A.num; i++)
-	// {
-	// 	cout<<A.val.at(i)<<'\t';
-	// }
-	// cout<<endl;
-	
-	// Define arrays for multiplication
-	// int *x = new int[A.n];
-	// double *y = new double[A.n];
-
-	vector<int> x;
-	vector<double> y;
-
-	for (int i = 0;  i < A.n+1; i++)
-	{
-		x.push_back(1);
-		//x[i]=1;
-	}
-
-//size
-	cout<<"row "<<A.row.size() <<endl;
-	cout<<"col "<<A.col.size() <<endl;
-	cout<<"val "<<A.val.size() <<endl;
-	cout<<"x "<<x.size() <<endl;
-	cout<<"y "<<y.size() <<endl;
-
+// End code from mwm126
 
 	// Calculate the sum
 	double sum;
-	cout<<"Running sum now"<<endl;
-	for (int i = 0; i < A.n+1; i++)
+	double begin = omp_get_wtime();
+  	#pragma omp parallel for schedule(static)
+	for (int i = 0; i < rows; i++)
 	{
 		sum = 0.0;
-		//cout<<"J goes from "<<A.row.at(i)<< " to " <<A.row.at(i+1)-1<<endl;
-		for (int j = A.row.at(i)-1; j <  A.row.at(i+1)-1; j++)
+		for (int j = A_row[i]; j <  A_row[i+1]; j++)
 		{
-			double Xi = x.at(A.col.at(j));
-			double Ai = A.val.at(j);
+			double Xi = x[A_col[j]];
+			double Ai = A_val[j];
 			sum = sum + Ai*Xi;
 		}
-		y.push_back(sum);
-		//y[i]=sum;
+		y[i]=sum;
 	}
+	double end = omp_get_wtime();
+	cout <<"Time to calculate:" <<end - begin <<endl;
 
-	// Output the resulting vector
-	for (int i = 0; i < y.size(); i++)
-	{
-		cout <<"y["<<i<<"] = "<<y.at(i)<<endl;
-	}
+	// // Output the resulting vector
+	// for (int i = 0; i < rows; i++)
+	// {
+	// 	cout <<"y["<<i<<"] = "<<y[i]<<endl;
+	// }
+
 	return 0;
 } 
